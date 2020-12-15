@@ -109,7 +109,7 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
             iceServers:[ 
                 {urls: "stun:stun.services.mozilla.com"},
                 {
-                    urls: "numb.viagenie.ca",
+                    urls: ["stun:numb.viagenie.ca", "turn:numb.viagenie.ca"],
                     username:"afshin.hoseini@gmail.com",
                     credential:"afshinqaz"
                 },
