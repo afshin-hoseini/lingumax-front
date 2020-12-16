@@ -46,8 +46,6 @@ export const Room: FC<Props> = ({meeting, me, socketRef})=> {
     useEffect(()=>{
         if( myType !== MemberType.Interviewer) return;
         if(audianceSocketId) {
-
-            console.log("MAKING OFFER FROM=>", me.name)
             setTimeout(()=>createOffer(audianceSocketId), 2000);
         }
     }, [audianceSocketId, myType, createOffer])
@@ -113,11 +111,6 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
                     username:"afshin.hoseini@gmail.com",
                     credential:"afshinqaz"
                 },
-                {
-                    urls: 'turn:numb.viagenie.ca',
-                    credential: 'muazkh',
-                    username: 'webrtc@live.com'
-                },
              ]
         });
         peerConRef.current = pc;
@@ -129,17 +122,20 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
                 candidate,
                 to: peerSocketIdRef.current
             });
-            console.log("Sending Candidate")
         }
 
         pc.ontrack = (event)=>{
-            const remoteVid = (document.getElementById("video-audience") as HTMLVideoElement)!;
-            if(remoteVid?.srcObject) return;
+            const remoteVid = audienceVideoRef.current!;
+            if(remoteVid?.srcObject != null) return;
             remoteVid.srcObject = event.streams[0];
-            console.log("XXX ON TRACK ===>");
         }
 
-        
+        pc.onconnectionstatechange = (e:any)=>{
+            const connectionState = e?.currentTarget?.connectionState;
+            if(["disconnected", "failed"].includes(connectionState)) { 
+                audienceVideoRef.current!.srcObject = null;
+            }
+        }
 
 
         if(typeof navigator?.mediaDevices?.getUserMedia === 'undefined'){
@@ -168,8 +164,6 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
 
             if(desc?.type === 'offer') {
 
-                console.log("Offer Made");
-
                 await pc.setRemoteDescription(desc);
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
@@ -179,14 +173,11 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
                     to: from
                 });
 
-                console.log("Answer sent");
             }
             else if(desc?.type === 'answer') {
-                console.log("Answer Recieved");
                 await pc.setRemoteDescription(desc);
             }
             else if(candidate) {
-                console.log("Candidate Recieved");
                 await pc.addIceCandidate(candidate)
             }
         });
