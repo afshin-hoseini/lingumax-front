@@ -1,4 +1,4 @@
-import { FC, MutableRefObject, useCallback, useEffect, useMemo, useRef } from 'react';
+import { FC, MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { MeetingModel, Member, MemberType } from '../../@types';
 import  { io, Socket } from 'socket.io-client';
@@ -14,9 +14,49 @@ navigator.getUserMedia = navigator.getUserMedia ||
     (navigator as any).mozGetUserMedia ||
     (navigator as any).msGetUserMedia;
 
-export const Container = styled.div`
+export const Container = styled.div<{isPeerConnected?: boolean}>`
 
 `;
+
+export const VideosContainer = styled.div<{isPeerConnected?: boolean}>`
+
+    position: relative;
+    height: 100vh;
+
+    #video-audience:not(.pc){
+        display: none;
+    }
+
+    #video-audience.pc {
+        position:absolute;
+        top:0; left:0; bottom: 0; right:0;
+        width:100%;
+        min-width:100%;
+        height:100%;
+    }
+
+    #video-user {
+        position:absolute;
+        z-index:1;
+        transition:all 0.4s ease-in;
+    }
+
+    #video-user:not(.pc) {
+        top:0; left:0; bottom: 0; right:0;
+        width:100%;
+        min-width:100%;
+        height:100%;
+    }
+
+    #video-user.pc{
+        position:absolute;
+        top:0; right:0;
+        left:unset; bottom: unset;
+        max-width:250px;
+        max-height: 150px;
+    }
+`;
+
 const answersFrom : any = {};
 
 type Props = {
@@ -33,7 +73,7 @@ export const Room: FC<Props> = ({meeting, me, socketRef})=> {
         return Object.keys(meeting.members).find(socketId => socketId !== me.socketId)
     },[me, meeting]);
 
-    const {userVideoRef, audienceVideoRef, createOffer} = useRTC(socketRef, peerSocketId);
+    const {userVideoRef, audienceVideoRef, createOffer, isPeerConnected} = useRTC(socketRef, peerSocketId);
     const members = useMemo<MembersByRole>(()=>{
         return Object.keys(meeting?.members || {}).reduce((m, key)=>{
             const member = meeting?.members?.[key];
@@ -53,12 +93,12 @@ export const Room: FC<Props> = ({meeting, me, socketRef})=> {
     return (
         <Container>
             <MemberViewer members={members}/>
-            <div className="videos-container">
+            <VideosContainer className="videos-container" isPeerConnected={isPeerConnected}>
 
-                <video style={{backgroundColor:'gray', maxWidth:200}} muted id="video-user" autoPlay ref={userVideoRef}/>
-                <video style={{backgroundColor:'gray', maxWidth:200}} id="video-audience" autoPlay ref={audienceVideoRef}/>
+                <video style={{backgroundColor:'gray', maxWidth:200}} muted id="video-user" className={`${isPeerConnected? 'pc':''}`} autoPlay ref={userVideoRef}/>
+                <video style={{backgroundColor:'gray', maxWidth:200}} id="video-audience" className={`${isPeerConnected? 'pc':''}`} autoPlay ref={audienceVideoRef}/>
 
-            </div>
+            </VideosContainer>
         </Container>
     )
 }
@@ -81,6 +121,7 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
     const audienceVideoRef = useRef<HTMLVideoElement>(null);
     const peerConRef = useRef<RTCPeerConnection>();
     const peerSocketIdRef = useRef<string>();
+    const [isPeerConnected, setIsPeerConnected] = useState<boolean>(false);
 
     peerSocketIdRef.current = peerSocketId;
 
@@ -132,8 +173,11 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
 
         pc.onconnectionstatechange = (e:any)=>{
             const connectionState = e?.currentTarget?.connectionState;
+
+            if(connectionState === "connected") setIsPeerConnected(true);
             if(["disconnected", "failed"].includes(connectionState)) { 
                 audienceVideoRef.current!.srcObject = null;
+                setIsPeerConnected(false);
             }
         }
 
@@ -188,6 +232,7 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
     return {
         userVideoRef,
         audienceVideoRef,
-        createOffer
+        createOffer,
+        isPeerConnected
     }
 }
