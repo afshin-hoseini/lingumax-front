@@ -146,11 +146,11 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
         const socket = socketRef.current!;
         const pc = new PeerConnection({
             iceServers:[ 
-                {urls: "stun:stun.services.mozilla.com"},
+                {urls: ["stun:stun.services.mozilla.com", "stun:numb.viagenie.ca"]},
                 {
-                    urls: ["stun:numb.viagenie.ca", "turn:numb.viagenie.ca"],
-                    username:"afshin.hoseini@gmail.com",
-                    credential:"afshinqaz"
+                    urls: ["turn:51.75.233.33"],
+                    username:"1608519387",
+                    credential:"UOCOi+EYw6yrV0ze31Ox2M45ySA="
                 },
              ]
         });
