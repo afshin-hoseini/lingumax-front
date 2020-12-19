@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { MeetingModel, Member } from "../../@types"
+import { useCallback, useEffect, useState } from "react"
+import { ConnectionStatus, MeetingModel, Member } from "../../@types"
 import { MeetingEntry } from "./Entry";
 import { Room } from "./Room";
-import  { io, Socket } from 'socket.io-client';
 import styled from 'styled-components';
+import { useMessaging } from "features/MessagingContext";
+import { useApp } from "features/AppContext";
 
 
 const Container = styled.div`
@@ -21,16 +22,16 @@ const Container = styled.div`
 
 export const Meeting = ()=> {
 
-    const {isConnected, setMe, me, meeting, socketRef} = useMeeting();
+    const {setMe, me, meeting} = useMeeting();
 
     return (
         <Container>
-            <div className="connection-status">
-                {isConnected ? "Connected": "Not Connected"}
-            </div>
-
             {
-                !me? (<MeetingEntry setMe={setMe}/>) : (<Room meeting={meeting!} me={me} socketRef={socketRef as any}/>)
+                !me? (
+                    <MeetingEntry setMe={setMe} meeting={meeting}/>
+                ) : (
+                    <Room meeting={meeting!} me={me}/>
+                )
             }
         </Container>
     )
@@ -38,39 +39,39 @@ export const Meeting = ()=> {
 
 const useMeeting = ()=> {
 
-    const socketRef = useRef<Socket>();
-    const [socketId, setSocketId] = useState<string>();
+    const {connectionStatus, socketRef} = useMessaging();
+    const {setMeeting, meeting} = useApp();
     const [me, setMe] = useState<Member>();
-    const [meeting, setMeeting] = useState<MeetingModel>();
 
-    useEffect(()=> {
+    const socket = socketRef?.current;
+    useEffect(()=>{
         
-        //https://mysrvtest.herokuapp.com/
-        //http://localhost:5000
-        const socket = io(`https://mysrvtest.herokuapp.com/`, {
-            transports:["websocket"]
+        if(!socket) return;
+        socket.on("meeting", (meeting: MeetingModel)=>{
+            setMeeting?.(meeting);
         });
-        socket.on("connect", ()=>setSocketId(socket?.id));
-        socket.on("disconnect", ()=>setSocketId(undefined));
-        socket.on("meeting", (meeting: MeetingModel)=>setMeeting(meeting));
-        socket.on('connect_failed', function(error: any) {
-            alert(error)
-         })
-        // socket.onAny(function(){console.log(arguments)})
-        socketRef.current = socket;
-    }, [])
+    }, [socket, setMeeting]);
 
     const onSetMeState = useCallback((me: Member)=>{
+
+        const socketId = socket?.id;
+
+        if(connectionStatus !== ConnectionStatus.Connected || !socketId) {
+            alert("Please chec your connection to server. Try to refresh the page.");
+            return;
+        }
+
         me.socketId = socketId;
         setMe(me);
-        socketRef.current?.emit("join", me);
-    }, [socketId]);
+        socket?.emit("join", me);
+
+    }, [connectionStatus, socket]);
 
     return {
-        isConnected: !!socketId,
+        isConnected: connectionStatus === ConnectionStatus.Connected,
         me,
         setMe: onSetMeState,
-        socketId,
+        socketId: socket?.id,
         meeting,
         socketRef
     }

@@ -1,8 +1,9 @@
 import { FC, MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { MeetingModel, Member, MemberType } from '../../@types';
-import  { io, Socket } from 'socket.io-client';
-import { ReadStream } from 'tty';
+import  { Socket } from 'socket.io-client';
+import { useMessaging } from 'features/MessagingContext';
+import { Meeting } from '.';
 
 const PeerConnection = window.RTCPeerConnection ||
 (window as any).mozRTCPeerConnection ||
@@ -15,65 +16,68 @@ navigator.getUserMedia = navigator.getUserMedia ||
     (navigator as any).msGetUserMedia;
 
 export const Container = styled.div<{isPeerConnected?: boolean}>`
-
+    background-color: #181818;
+    color: white;
+    height: 100vh;
+    display:flex;
+    flex-direction:column;
 `;
 
-export const VideosContainer = styled.div<{isPeerConnected?: boolean}>`
+export const PeerVideoContainer = styled.div<{isPeerConnected?: boolean}>`
 
     position: relative;
-    height: 100vh;
+    height: 100%;
+    width:100%;
 
-    #video-audience:not(.pc){
-        display: none;
-    }
-
-    #video-audience.pc {
-        position:absolute;
-        top:0; left:0; bottom: 0; right:0;
-        width:100%;
-        min-width:100%;
-        height:100%;
-    }
-
-    #video-user {
-        position:absolute;
-        z-index:1;
-        transition:all 0.4s ease-in;
-    }
-
-    #video-user:not(.pc) {
-        top:0; left:0; bottom: 0; right:0;
-        width:100%;
-        min-width:100%;
-        height:100%;
-    }
-
-    #video-user.pc{
-        position:absolute;
-        top:0; right:0;
-        left:unset; bottom: unset;
-        max-width:250px;
-        max-height: 150px;
+    #video-audience{
+        width: 100%;
+        flex:1;
     }
 `;
 
-const answersFrom : any = {};
+const HeaderSection = styled.div`
+
+    display: flex;
+    padding: 12px 8px;
+
+    .my-vid-container {
+
+        width:250px;
+        height: 100px;
+        max-width: 200px;
+        max-height: 150px;
+        background-color:red;
+        border-radius: 15px;
+        overflow: hidden;
+
+        #video-user {
+            width:100%;
+            height:100%;
+            object-fit: cover;
+        }
+    }
+
+    .info-and-controls {
+        display: flex;
+        flex-direction: column;
+        flex:1;
+    }
+`;
 
 type Props = {
     me: Member;
     meeting: MeetingModel;
-    socketRef: MutableRefObject<Socket>
 }
 type MembersByRole = Partial<{[k in MemberType]: Member}>
 
-export const Room: FC<Props> = ({meeting, me, socketRef})=> {
-
+export const Room: FC<Props> = ({meeting, me})=> {
+    
     const peerSocketId = useMemo(()=>{
         if(!me?.socketId || !meeting?.members) return;
         return Object.keys(meeting.members).find(socketId => socketId !== me.socketId)
     },[me, meeting]);
 
-    const {userVideoRef, audienceVideoRef, createOffer, isPeerConnected} = useRTC(socketRef, peerSocketId);
+    const {userVideoRef, audienceVideoRef, createOffer, isPeerConnected} = useRTC(peerSocketId);
     const members = useMemo<MembersByRole>(()=>{
         return Object.keys(meeting?.members || {}).reduce((m, key)=>{
             const member = meeting?.members?.[key];
@@ -92,30 +96,44 @@ export const Room: FC<Props> = ({meeting, me, socketRef})=> {
 
     return (
         <Container>
-            <MemberViewer members={members}/>
-            <VideosContainer className="videos-container" isPeerConnected={isPeerConnected}>
+            <HeaderViewer members={members} me={me} userVideoRef={userVideoRef}/>
+            <PeerVideoContainer className="videos-container" isPeerConnected={isPeerConnected}>
 
-                <video style={{backgroundColor:'gray', maxWidth:200}} muted id="video-user" className={`${isPeerConnected? 'pc':''}`} autoPlay ref={userVideoRef}/>
-                <video style={{backgroundColor:'gray', maxWidth:200}} id="video-audience" className={`${isPeerConnected? 'pc':''}`} autoPlay ref={audienceVideoRef}/>
+                <video id="video-audience" className={`${isPeerConnected? 'pc':''}`} autoPlay ref={audienceVideoRef}/>
 
-            </VideosContainer>
+            </PeerVideoContainer>
         </Container>
     )
 }
 
-const MemberViewer : FC<{members: MembersByRole}> = ({members})=>{
+const HeaderViewer : FC<{members: MembersByRole, me: Member, userVideoRef: React.RefObject<HTMLVideoElement>}> = ({members, me, userVideoRef})=>{
+
+    
+    const peerMember = useMemo(()=>{
+        const peerRole = Object.keys(members).find(key => me.socketId !== members?.[key as keyof MembersByRole]?.socketId)
+        return members?.[peerRole as keyof MembersByRole];
+    }, [me, members]);
 
     return (
-    <div>
-        <span>Members:</span>
-        <ul>
-            <li><b>Interviewer: </b> {members.interviewer?.name || "Not here yet!"}</li>
-            <li><b>Interviewee: </b> {members.interviewee?.name || "Not here yet!"}</li>
-        </ul>
-    </div>)
+    <HeaderSection>
+        <div className="info-and-controls">
+            {peerMember ?
+                <span>{peerMember?.name} <span>Online</span></span>
+                :
+                <span>Peer is not online yet</span>
+            }
+        </div>
+
+        <div className="my-vid-container">
+            <video 
+                muted id="video-user" 
+                autoPlay 
+                ref={userVideoRef}/>
+        </div>
+    </HeaderSection>)
 }
 
-const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
+const useRTC = (peerSocketId?: string)=> {
 
     const userVideoRef = useRef<HTMLVideoElement>(null);
     const audienceVideoRef = useRef<HTMLVideoElement>(null);
@@ -125,13 +143,15 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
 
     peerSocketIdRef.current = peerSocketId;
 
+    const {socketRef} = useMessaging();
+
     const createOffer = useCallback(async(audianceSocketId: string)=>{
         try{
             const pc = peerConRef.current!;
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            socketRef.current?.emit('RTCPC', {
+            socketRef!.current?.emit('RTCPC', {
                 desc: offer,
                 to: audianceSocketId
             })
@@ -143,7 +163,7 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
 
     useEffect(()=>{
 
-        const socket = socketRef.current!;
+        const socket = socketRef!.current!;
         const pc = new PeerConnection({
             iceServers:[ 
                 {urls: ["stun:stun.services.mozilla.com", "stun:numb.viagenie.ca"]},
@@ -181,9 +201,12 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
             }
         }
 
+        const mediaConfig = {video:{
+            width:1440, height:480
+        }, audio:true};
 
         if(typeof navigator?.mediaDevices?.getUserMedia === 'undefined'){
-            navigator.getUserMedia({video:true, audio:true}, (stream)=>{
+            navigator.getUserMedia(mediaConfig, (stream)=>{
                 
                 if(userVideoRef.current){
                     userVideoRef.current.srcObject = stream;
@@ -192,7 +215,7 @@ const useRTC = (socketRef: MutableRefObject<Socket>, peerSocketId?: string)=> {
             }, (error)=>{});
         }
         else {
-            navigator.mediaDevices.getUserMedia({video:true, audio:true})
+            navigator.mediaDevices.getUserMedia(mediaConfig)
             .then((stream)=>{
                 if(userVideoRef.current){
                     userVideoRef.current.srcObject = stream;

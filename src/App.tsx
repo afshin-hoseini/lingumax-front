@@ -1,10 +1,31 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 import { Meeting } from './pages/meeting';
+import { AppContextProvider } from './features/AppContext';
+import { MessagingContext, MessagingProvider } from './features/MessagingContext';
+import { ConnectionStatus } from './@types';
 
 function App() {
-  return (<Meeting/>);
+    const [connectionStablishedOnce, setConnectionStablishedOnce] = useState<boolean>(false);
+
+    return (
+        <AppContextProvider>
+            <MessagingProvider>
+                    <MessagingContext.Consumer >
+                        {({connectionStatus})=>{
+                            
+                            if(connectionStablishedOnce || connectionStatus === ConnectionStatus.Connected){
+                                setConnectionStablishedOnce(true);
+                                return <Meeting/>
+                            }
+                            
+                            return <span>Connecting to server ...</span>
+                        }}
+                    </MessagingContext.Consumer>
+                    
+            </MessagingProvider>
+        </AppContextProvider>
+    );
 }
 
 export default App;

@@ -1,6 +1,6 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
-import { Member } from '../../@types';
+import { MeetingModel, Member } from '../../@types';
 
 const Container = styled.form`
 
@@ -25,8 +25,10 @@ const Container = styled.form`
 
 type Props = {
     setMe : (me: Member)=>void;
+    meeting?: MeetingModel;
 }
-export const MeetingEntry: FC<Props> = ({setMe})=> {
+export const MeetingEntry: FC<Props> = ({setMe, meeting})=> {
+
     return (
         <Container onSubmit={(e)=>{
             const form =  (e.target as HTMLFormElement);
@@ -34,9 +36,14 @@ export const MeetingEntry: FC<Props> = ({setMe})=> {
                 type : form.type.value,
                 name: form.username.value
             }
+
+            e.preventDefault();
+            if(!me.name || !me.type) {
+                alert("Please determine your role and name.");
+                return;
+            }
             
             setMe(me);
-            e.preventDefault();
         }}>
             <div className="types-rg">
                 <input type="radio" value="interviewer" name="type" id="type-interviewer"/>
