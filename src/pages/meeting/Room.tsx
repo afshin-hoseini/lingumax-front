@@ -18,20 +18,26 @@ navigator.getUserMedia = navigator.getUserMedia ||
 export const Container = styled.div<{isPeerConnected?: boolean}>`
     background-color: #181818;
     color: white;
-    height: 100vh;
+    width:100%;
+    height: 100%;
+    max-height:100%;
     display:flex;
     flex-direction:column;
 `;
 
 export const PeerVideoContainer = styled.div<{isPeerConnected?: boolean}>`
 
-    position: relative;
-    height: 100%;
+    display:flex;
+    flex-direction:column;
+    flex:1;
     width:100%;
+    height: 1px;
+
 
     #video-audience{
+        max-height: 100%;
+        height: 100%;
         width: 100%;
-        flex:1;
     }
 `;
 
@@ -201,9 +207,7 @@ const useRTC = (peerSocketId?: string)=> {
             }
         }
 
-        const mediaConfig = {video:{
-            width:1440, height:480
-        }, audio:true};
+        const mediaConfig = {video:true, audio:true};
 
         if(typeof navigator?.mediaDevices?.getUserMedia === 'undefined'){
             navigator.getUserMedia(mediaConfig, (stream)=>{
