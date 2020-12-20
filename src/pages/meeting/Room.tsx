@@ -4,6 +4,7 @@ import { MeetingModel, Member, MemberType } from '../../@types';
 import  { Socket } from 'socket.io-client';
 import { useMessaging } from 'features/MessagingContext';
 import { Meeting } from '.';
+import { InterviewTimer } from 'features/Timer';
 
 const PeerConnection = window.RTCPeerConnection ||
 (window as any).mozRTCPeerConnection ||
@@ -52,7 +53,6 @@ const HeaderSection = styled.div`
         height: 100px;
         max-width: 200px;
         max-height: 150px;
-        background-color:red;
         border-radius: 15px;
         overflow: hidden;
 
@@ -67,6 +67,15 @@ const HeaderSection = styled.div`
         display: flex;
         flex-direction: column;
         flex:1;
+
+        .timer-module {
+            background: #ffffff1a;
+            border-radius: 40px;
+            padding: 4px 8px;
+            margin-top:12px;
+            max-width: 150px;
+            overflow:hidden;
+        }
     }
 `;
 
@@ -127,6 +136,10 @@ const HeaderViewer : FC<{members: MembersByRole, me: Member, userVideoRef: React
                 <span>{peerMember?.name} <span>Online</span></span>
                 :
                 <span>Peer is not online yet</span>
+            }
+
+            { peerMember &&
+                <InterviewTimer me={me} peer={peerMember!} className="timer-module"/>
             }
         </div>
 

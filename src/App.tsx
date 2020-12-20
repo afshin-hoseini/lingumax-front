@@ -4,6 +4,7 @@ import { Meeting } from './pages/meeting';
 import { AppContextProvider } from './features/AppContext';
 import { MessagingContext, MessagingProvider } from './features/MessagingContext';
 import { ConnectionStatus } from './@types';
+import 'boxicons';
 
 function App() {
     const [connectionStablishedOnce, setConnectionStablishedOnce] = useState<boolean>(false);
