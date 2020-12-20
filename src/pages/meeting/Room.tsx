@@ -188,8 +188,8 @@ const useRTC = (peerSocketId?: string)=> {
                 {urls: ["stun:stun.services.mozilla.com", "stun:numb.viagenie.ca"]},
                 {
                     urls: ["turn:51.75.233.33"],
-                    username:"1608519387",
-                    credential:"UOCOi+EYw6yrV0ze31Ox2M45ySA="
+                    username:"1610463185",
+                    credential:"d7Zst4QKhI9XaT4t0eR3llcNd/4="
                 },
              ]
         });
