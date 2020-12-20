@@ -8,6 +8,8 @@ const Container = styled.form`
     max-width: 500px;
     display: flex;
     flex-direction: column;
+    font-size:1em;
+    margin: 20px auto;
 
     .types-rg {
         display: flex;
@@ -45,16 +47,19 @@ export const MeetingEntry: FC<Props> = ({setMe, meeting})=> {
             
             setMe(me);
         }}>
+            <b>Select you role:</b>
             <div className="types-rg">
-                <input type="radio" value="interviewer" name="type" id="type-interviewer"/>
+                <input type="radio" value="interviewer" name="type" id="type-interviewer" defaultChecked/>
                 <label htmlFor="type-interviewer">Interviewer</label>
                 <input type="radio" value="interviewee" name="type" id="type-interviewee"/>
                 <label htmlFor="type-interviewee">Interviewee</label>
             </div>
-            <span> Enter your name: </span>
+            <b> Enter your name: </b>
             <input name="username" placeholder="e.g James Hetfield"/>
 
-            <button className="join-btn">Join</button>
+            <i><b>Note:</b> You might be asked to grant camera and microphone access permission. 
+            Please allow the request, in order to make video call go through.</i>
+            <button className="join-btn"><b>Join</b></button>
         </Container>
     )
 }
